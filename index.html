@@ -146,14 +146,32 @@
         </main>
     </div>
 
-   <script>
+  <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+        // TUS LLAVES REALES DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyC-P9pWyDplTUKn8NT6woktwddJVRdqKZ0",
+            authDomain: "codesync-pro.firebaseapp.com",
+            databaseURL: "https://codesync-pro-default-rtdb.firebaseio.com",
+            projectId: "codesync-pro",
+            storageBucket: "codesync-pro.firebasestorage.app",
+            messagingSenderId: "203653670692",
+            appId: "1:203653670692:web:3036fb810b68027a62b5b1",
+            measurementId: "G-LBTNFPX6BX"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
         // --- BASE DE DATOS Y ESTADO ---
         let currentUser = "potrillo";
         let chatActivo = null;
-        let chats = JSON.parse(localStorage.getItem("CodeSync_Ninja_Ultimate_v5")) || [];
+        let chats = []; // Ya NO usamos localStorage, usamos la nube
 
         // --- 1. ACCESO NINJA ---
-        function iniciarSesion() {
+        window.iniciarSesion = function() {
             const u = document.getElementById('user').value.trim().toLowerCase();
             const p = document.getElementById('pass').value.trim();
             
@@ -165,52 +183,62 @@
             } else {
                 document.getElementById('error-msg').style.display = 'block';
             }
-        }
+        };
 
-        // --- 2. GESTIÓN DE PROYECTOS ---
+        // --- 2. GESTIÓN DE PROYECTOS (CONECTADO A FIREBASE) ---
         function arrancarSistema() {
             actualizarBotonUsuario();
-            if (chats.length === 0) {
-                chats.push({ id: Date.now(), nombre: "Proyecto Alpha", mensajes: [] });
-                guardar();
-            }
-            renderizarLista();
-            abrirChat(chats[0].id);
+            
+            // ESCUCHAMOS A FIREBASE EN TIEMPO REAL
+            onValue(ref(db, 'proyectos'), (snapshot) => {
+                const data = snapshot.val();
+                chats = data ? data : [];
+                
+                if (chats.length === 0) {
+                    // Si la nube está vacía, creamos el primero
+                    chats.push({ id: Date.now(), nombre: "Proyecto Alpha", mensajes: [] });
+                    guardar();
+                } else {
+                    renderizarLista();
+                    // Restauramos el chat activo
+                    if (chatActivo && chats.find(c => c.id === chatActivo)) {
+                        window.abrirChat(chatActivo);
+                    } else {
+                        window.abrirChat(chats[0].id);
+                    }
+                }
+            });
         }
 
-        function crearChat() {
+        window.crearChat = function() {
             const nombre = prompt("> Nombre del nuevo script:");
             if (nombre) {
                 const nuevo = { id: Date.now(), nombre: nombre, mensajes: [] };
                 chats.push(nuevo);
+                chatActivo = nuevo.id; 
                 guardar();
-                renderizarLista();
-                abrirChat(nuevo.id);
             }
-        }
+        };
 
-        function renombrar(id, e) {
+        window.renombrar = function(id, e) {
             e.stopPropagation();
             const chat = chats.find(c => c.id === id);
             const nuevo = prompt("> Nuevo nombre del proyecto:", chat.nombre);
             if (nuevo && nuevo !== chat.nombre) {
                 chat.nombre = nuevo;
                 guardar();
-                renderizarLista();
-                if (chatActivo === id) document.getElementById('chat-title').innerText = nuevo;
             }
-        }
+        };
 
-        function borrar(id, e) {
+        window.borrar = function(id, e) {
             e.stopPropagation();
             if (confirm("¿Seguro que quieres eliminar este proyecto, bro?")) {
                 chats = chats.filter(c => c.id !== id);
                 if (chats.length === 0) chats.push({ id: Date.now(), nombre: "General", mensajes: [] });
+                chatActivo = chats[0].id;
                 guardar();
-                renderizarLista();
-                abrirChat(chats[0].id);
             }
-        }
+        };
 
         function renderizarLista() {
             const lista = document.getElementById('chat-list');
@@ -225,30 +253,39 @@
                         <button onclick="borrar(${chat.id}, event)" style="background:none; border:none; color:var(--danger); cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 `;
-                div.onclick = () => abrirChat(chat.id);
+                div.onclick = () => window.abrirChat(chat.id);
                 lista.appendChild(div);
             });
         }
 
         // --- 3. LÓGICA DEL CHAT ---
-        function abrirChat(id) {
+        window.abrirChat = function(id) {
             chatActivo = id;
-            renderizarLista();
+            
+            document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('activo'));
             const chatObj = chats.find(c => c.id === id);
+            
+            if(!chatObj) return;
+
             document.getElementById('chat-title').innerText = chatObj.nombre;
             
             const area = document.getElementById('chat-area');
             area.innerHTML = '';
-            chatObj.mensajes.forEach(msg => inyectarMsg(msg));
+            
+            if(chatObj.mensajes) {
+                chatObj.mensajes.forEach(msg => inyectarMsg(msg));
+            }
             area.scrollTop = area.scrollHeight;
-        }
+        };
 
-        function enviarMensaje() {
+        window.enviarMensaje = function() {
             const input = document.getElementById('code-input');
             const code = input.value.trim();
             if (!code || !chatActivo) return;
 
             const chatObj = chats.find(c => c.id === chatActivo);
+            if(!chatObj.mensajes) chatObj.mensajes = [];
+
             const nuevoMsg = {
                 idMsg: 'code-' + Date.now(),
                 autor: currentUser,
@@ -257,33 +294,26 @@
             };
             
             chatObj.mensajes.push(nuevoMsg);
-            guardar();
-            inyectarMsg(nuevoMsg);
+            guardar(); // Al guardar en Firebase, se sincronizan todas las pantallas
             input.value = '';
-        }
+        };
 
         function inyectarMsg(msg) {
             const area = document.getElementById('chat-area');
             const isMe = msg.autor === currentUser;
             const sideClass = isMe ? 'me' : 'other';
             
-            // Estado del botón (Si ya fue copiado, ambos salen verdes)
             const copyClass = msg.copiado ? 'btn-copy copiado' : 'btn-copy';
             const copyText = msg.copiado ? '<i class="fa-solid fa-check-double"></i> COPIADO' : '<i class="fa-regular fa-copy"></i> COPIAR';
 
             const html = `
                 <div class="msg-row ${sideClass}" id="row-${msg.idMsg}">
                     <div class="bubble">
-                        <!-- COPIADO ARRIBA -->
                         <div class="bar-action code-header">
                             <span><i class="fa-solid fa-microchip"></i> ${msg.autor.toUpperCase()}</span>
                             <button class="${copyClass}" onclick="copiarTodo('${msg.idMsg}')">${copyText}</button>
                         </div>
-                        
-                        <!-- BLOQUE DE CÓDIGO CON DOBLE CLIC -->
                         <pre id="${msg.idMsg}" ondblclick="copiarTodo('${msg.idMsg}')">${escapar(msg.codigo)}</pre>
-                        
-                        <!-- COPIADO ABAJO -->
                         <div class="bar-action code-footer">
                             <span>LINEAS: ${msg.codigo.split('\n').length}</span>
                             <button class="${copyClass}" onclick="copiarTodo('${msg.idMsg}')">${copyText}</button>
@@ -292,38 +322,27 @@
                 </div>
             `;
             area.insertAdjacentHTML('beforeend', html);
-            area.scrollTop = area.scrollHeight;
         }
 
         // --- 4. COPIADO DUAL SINCRONIZADO ---
-        function copiarTodo(idHTML) {
+        window.copiarTodo = function(idHTML) {
             const texto = document.getElementById(idHTML).innerText;
-            const row = document.getElementById('row-' + idHTML);
-            const botones = row.querySelectorAll('.btn-copy');
-
             navigator.clipboard.writeText(texto).then(() => {
-                // Sincronizar todos los botones de esta burbuja a VERDE
-                botones.forEach(btn => {
-                    btn.innerHTML = '<i class="fa-solid fa-check-double"></i> COPIADO';
-                    btn.classList.add('copiado');
-                });
-
-                // Guardar persistencia
                 const chatObj = chats.find(c => c.id === chatActivo);
                 const msg = chatObj.mensajes.find(m => m.idMsg === idHTML);
                 if (msg) {
                     msg.copiado = true;
-                    guardar();
+                    guardar(); // Cambia a verde en la PC y el Celular al mismo tiempo
                 }
             });
-        }
+        };
 
         // --- 5. UTILS ---
-        function switchearUsuario() {
+        window.switchearUsuario = function() {
             currentUser = (currentUser === 'potrillo') ? 'potrillo2' : 'potrillo';
             actualizarBotonUsuario();
-            if (chatActivo) abrirChat(chatActivo); // Recargar para invertir colores
-        }
+            if (chatActivo) window.abrirChat(chatActivo); 
+        };
 
         function actualizarBotonUsuario() {
             const btn = document.getElementById('id-btn');
@@ -331,16 +350,21 @@
             btn.className = (currentUser === 'potrillo') ? "btn-identity active-me" : "btn-identity active-other";
         }
 
-        function guardar() { localStorage.setItem("CodeSync_Ninja_Ultimate_v5", JSON.stringify(chats)); }
+        // ESTA ES LA MAGIA: Subimos la data a Firebase en vez de a tu disco duro local
+        function guardar() { 
+            set(ref(db, 'proyectos'), chats);
+        }
 
         function escapar(str) { return str.replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'}[m])); }
 
         // Atajos de teclado
-        document.getElementById('code-input').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
-        });
-        document.getElementById('pass').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') iniciarSesion();
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('code-input').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.enviarMensaje(); }
+            });
+            document.getElementById('pass').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') window.iniciarSesion();
+            });
         });
     </script>
 </body>
