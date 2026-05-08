@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeSync Pro - Ninja Ultimate</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
+   <style>
         :root {
             --bg-dark: #0d1117;
             --bg-sidebar: #161b22;
@@ -13,10 +13,10 @@
             --text: #c9d1d9;
             
             /* DIFERENCIACIÓN DE USUARIOS */
-            --me-blue: #1f6feb;      /* Azul Pro */
-            --me-bg: #051d33;        /* Fondo Azul Profundo */
-            --other-gray: #8b949e;   /* Gris Oxford */
-            --other-bg: #21262d;     /* Fondo Carbón */
+            --me-blue: #1f6feb;      
+            --me-bg: #051d33;        
+            --other-gray: #8b949e;   
+            --other-bg: #21262d;     
             
             --neon-green: #2ecc71;
             --danger: #f85149;
@@ -42,7 +42,7 @@
         /* --- INTERFAZ --- */
         #app-screen { display: none; width: 100vw; height: 100vh; flex-direction: row; }
 
-        /* SIDEBAR */
+        /* SIDEBAR (PROYECTOS) */
         .sidebar { width: 320px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         .sidebar-header { padding: 25px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .chat-list { flex: 1; overflow-y: auto; padding: 12px; }
@@ -56,7 +56,7 @@
         .chat-item:hover .chat-actions { opacity: 1; }
 
         /* --- CHAT AREA --- */
-        .main-chat { flex: 1; display: flex; flex-direction: column; }
+        .main-chat { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-header { padding: 20px 30px; background: var(--bg-sidebar); border-bottom: 1px solid var(--border); font-weight: bold; font-size: 20px; color: white; display: flex; align-items: center; gap: 10px; }
         #chat-area { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 30px; }
 
@@ -67,11 +67,9 @@
 
         .bubble { max-width: 85%; border-radius: 20px; overflow: hidden; border: 1px solid; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
         
-        /* TU COLOR (AZUL) */
         .me .bubble { border-color: var(--me-blue); background: var(--me-bg); border-bottom-right-radius: 4px; }
         .me .bar-action { background: rgba(31, 111, 235, 0.15); color: #fff; }
         
-        /* OTRO COLOR (GRIS) */
         .other .bubble { border-color: #444; background: var(--other-bg); border-bottom-left-radius: 4px; }
         .other .bar-action { background: rgba(255,255,255,0.05); color: var(--other-gray); }
 
@@ -79,7 +77,6 @@
         .code-header { border-bottom: 1px solid rgba(255,255,255,0.05); }
         .code-footer { border-top: 1px solid rgba(255,255,255,0.05); }
 
-        /* BOTONES DE COPIADO */
         .btn-copy { 
             background: var(--me-blue); color: white; border: none; padding: 6px 14px; 
             border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s;
@@ -92,10 +89,10 @@
         pre { padding: 20px; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; overflow-x: auto; color: #e6edf3; margin: 0; max-height: 450px; background: #010409; cursor: cell; }
 
         /* INPUT AREA */
-        .input-area { padding: 25px 30px; background: var(--bg-sidebar); border-top: 1px solid var(--border); display: flex; gap: 15px; }
+        .input-area { padding: 25px 30px; background: var(--bg-sidebar); border-top: 1px solid var(--border); display: flex; gap: 15px; flex-shrink: 0; }
         textarea { flex: 1; height: 65px; background: #010409; border: 1px solid var(--border); border-radius: 14px; padding: 15px; color: white; resize: none; outline: none; font-family: 'Consolas', monospace; }
         textarea:focus { border-color: var(--me-blue); }
-        .btn-send { width: 70px; background: var(--me-blue); color: white; border: none; border-radius: 14px; cursor: pointer; font-size: 24px; transition: 0.3s; }
+        .btn-send { width: 70px; flex-shrink: 0; background: var(--me-blue); color: white; border: none; border-radius: 14px; cursor: pointer; font-size: 24px; transition: 0.3s; display: flex; justify-content: center; align-items: center;}
         .btn-send:hover { transform: scale(1.05); background: #388bfd; }
 
         /* IDENTITY SWITCH */
@@ -104,8 +101,74 @@
         .btn-identity.active-me { border-color: var(--me-blue); color: var(--me-blue); background: rgba(31, 111, 235, 0.05); }
         .btn-identity.active-other { border-color: var(--other-gray); color: var(--other-gray); }
         
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+
+        /* =========================================
+           MAGIA MÓVIL (AJUSTES PARA PANTALLAS CHICAS) 
+           ========================================= */
+        @media (max-width: 768px) {
+            #app-screen { 
+                flex-direction: column; /* Apilamos panel de proyectos y chat */
+            }
+            
+            /* El panel de proyectos se hace un slider horizontal en la parte de arriba */
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                border-right: none; 
+                border-bottom: 1px solid var(--border); 
+            }
+            
+            .sidebar-header { padding: 15px; }
+            .sidebar-header h3 { font-size: 16px; }
+            
+            .chat-list { 
+                display: flex; 
+                flex-direction: row; 
+                overflow-x: auto; 
+                overflow-y: hidden; 
+                padding: 10px; 
+                gap: 10px; 
+            }
+            
+            .chat-item { 
+                margin-bottom: 0; 
+                white-space: nowrap; 
+                padding: 10px 15px; 
+            }
+            
+            /* Ajustes del cuadro de chat */
+            .chat-header { padding: 15px; font-size: 16px; }
+            #chat-area { padding: 15px; gap: 20px; }
+            .bubble { max-width: 95%; }
+            pre { font-size: 12px; padding: 15px; }
+            
+            /* LA SOLUCIÓN DEL BOTÓN DE ENVIAR */
+            .input-area { 
+                padding: 10px; /* Reducimos espacios inútiles */
+                gap: 10px; 
+            }
+            
+            textarea { 
+                height: 50px; 
+                padding: 12px; 
+                font-size: 14px; 
+            }
+            
+            .btn-send { 
+                width: 50px; /* Tamaño fijo adaptado */
+                font-size: 20px; 
+            }
+            
+            /* Hacemos más chiquito el login en el celular */
+            .login-box { width: 90%; padding: 25px; }
+            .ninja-logo { font-size: 60px; }
+            #login-screen h2 { font-size: 28px; }
+            
+            /* Ocultamos los botones de renombrar/borrar en móvil temporalmente para que no estorben en el slider */
+            .chat-actions { display: none !important; }
+        }
     </style>
 </head>
 <body>
