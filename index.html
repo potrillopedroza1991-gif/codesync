@@ -182,7 +182,7 @@
             </div>
         </main>
     </div>
-    <script type="module">
+  <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
@@ -202,7 +202,7 @@
         const db = getDatabase(app);
 
         // ==========================================
-        // NUEVO: LÓGICA DEL MENÚ MÓVIL (LAS 3 RAYITAS)
+        // LÓGICA DEL MENÚ MÓVIL (LAS 3 RAYITAS)
         // ==========================================
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
@@ -221,7 +221,7 @@
         });
 
         // ==========================================
-        // TU CÓDIGO ORIGINAL HACIA ABAJO
+        // TU CÓDIGO ORIGINAL (CON EL ESCUDO ANTIBUGS)
         // ==========================================
         let currentUser = "potrillo";
         let chatActivo = null;
@@ -246,7 +246,13 @@
             
             onValue(ref(db, 'proyectos'), (snapshot) => {
                 const data = snapshot.val();
-                chats = data ? data : [];
+                
+                // 🔥 ESCUDO 1: Obligamos a que 'chats' sea siempre una lista 🔥
+                if (data) {
+                    chats = Array.isArray(data) ? data : Object.values(data);
+                } else {
+                    chats = [];
+                }
                 
                 if (chats.length === 0) {
                     chats.push({ id: Date.now(), nombre: "Proyecto Alpha", mensajes: [] });
@@ -329,9 +335,13 @@
             const area = document.getElementById('chat-area');
             area.innerHTML = '';
             
-            if(chatObj.mensajes) {
-                chatObj.mensajes.forEach(msg => inyectarMsg(msg));
+            // 🔥 ESCUDO 2: Obligamos a que los mensajes sean una lista 🔥
+            let mensajesLimpios = [];
+            if (chatObj.mensajes) {
+                mensajesLimpios = Array.isArray(chatObj.mensajes) ? chatObj.mensajes : Object.values(chatObj.mensajes);
             }
+            
+            mensajesLimpios.forEach(msg => inyectarMsg(msg));
             area.scrollTop = area.scrollHeight;
 
             // Cerramos el menú lateral si estamos en el celular
@@ -345,7 +355,13 @@
             if (!code || !chatActivo) return;
 
             const chatObj = chats.find(c => c.id === chatActivo);
-            if(!chatObj.mensajes) chatObj.mensajes = [];
+            
+            // 🔥 ESCUDO 3: Asegurarnos de que Firebase no rompa la lista al enviar 🔥
+            if(!chatObj.mensajes) {
+                chatObj.mensajes = [];
+            } else if (!Array.isArray(chatObj.mensajes)) {
+                chatObj.mensajes = Object.values(chatObj.mensajes);
+            }
 
             const nuevoMsg = {
                 idMsg: 'code-' + Date.now(),
@@ -389,9 +405,14 @@
             const texto = document.getElementById(idHTML).innerText;
             navigator.clipboard.writeText(texto).then(() => {
                 const chatObj = chats.find(c => c.id === chatActivo);
-                const msg = chatObj.mensajes.find(m => m.idMsg === idHTML);
+                
+                // Aseguramos la lista para buscar el copiado
+                const mensajesArray = Array.isArray(chatObj.mensajes) ? chatObj.mensajes : Object.values(chatObj.mensajes || {});
+                
+                const msg = mensajesArray.find(m => m.idMsg === idHTML);
                 if (msg) {
                     msg.copiado = true;
+                    chatObj.mensajes = mensajesArray; // Reasignamos limpio
                     guardar(); 
                 }
             });
@@ -424,5 +445,5 @@
             });
         });
     </script>
-</body>
+</body> 
 </html>
